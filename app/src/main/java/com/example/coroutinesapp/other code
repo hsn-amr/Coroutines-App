@@ -1,0 +1,64 @@
+package com.example.coroutinesapp
+
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.util.Log
+import android.widget.Button
+import android.widget.TextView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var adviceText: TextView
+    private lateinit var newAdviceButton: Button
+    var result = ""
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        newAdviceButton = findViewById(R.id.btnNewAdvice)
+
+        // When you press the button for the first time nothing appears,
+        // but when you press after that it shows advices
+        //I don't know that happen :), maybe because we use Coroutine?
+        newAdviceButton.setOnClickListener {
+            CoroutineScope(IO).launch{
+                val newAdvice = getNewAdvice()
+                withContext(Main){
+                    adviceText = findViewById(R.id.tvAdvice)
+                    adviceText.text = newAdvice
+                }
+            }
+        }
+    }
+
+    private fun getNewAdvice(): String {
+
+        val apiInterface = APIClient().getClient()?.create(APIInterface::class.java)
+
+        val call: Call<Advice?>? = apiInterface!!.getNewAdvice()
+
+        call?.enqueue(object : Callback<Advice?> {
+
+            override fun onResponse(call: Call<Advice?>, response: Response<Advice?>) {
+                val response: Advice? = response.body()
+                val advice = response!!.slip!!.advice
+                result = advice!!
+            }
+
+            override fun onFailure(call: Call<Advice?>, t: Throwable) {
+                call.cancel()
+            }
+        })
+
+        return result
+    }
+}
